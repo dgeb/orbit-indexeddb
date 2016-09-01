@@ -144,6 +144,17 @@ export default class IndexedDBSource extends Source {
     });
   }
 
+  get availableTypes() {
+    const objectStoreNames = this._db.objectStoreNames;
+    const types = [];
+
+    for (let i = 0; i < objectStoreNames.length; i++) {
+      types.push(objectStoreNames.item(i));
+    }
+
+    return types;
+  }
+
   putRecord(record) {
     const transaction = this._db.transaction([record.type], 'readwrite');
     const objectStore = transaction.objectStore(record.type);

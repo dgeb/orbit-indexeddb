@@ -8,7 +8,7 @@ export const QueryOperators = {
 
     let types = expression.args;
     if (types.length === 0 || (types.length === 1 && isNone(types[0]))) {
-      types = Object.keys(source.schema.models);
+      types = source.availableTypes;
     }
 
     return types.reduce((chain, type) => {
