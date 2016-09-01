@@ -5,6 +5,14 @@ The OrbitIndexedDB library includes a data source for
 that accesses a browser's
 [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API).
 
+## Installation
+
+TODO
+
+## Configuration
+
+TODO
+
 ## Contributing
 
 ### Installation
