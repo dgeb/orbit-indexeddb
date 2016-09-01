@@ -123,16 +123,23 @@ export default class IndexedDBSource extends Source {
     return new Orbit.Promise((resolve, reject) => {
       const transaction = this._db.transaction([type]);
       const objectStore = transaction.objectStore(type);
-      const request = objectStore.getAll();
+      const request = objectStore.openCursor();
+      const records = [];
 
       request.onerror = function(/* event */) {
         console.error('error - getRecords', request.errorCode);
         reject(request.errorCode);
       };
 
-      request.onsuccess = function(/* event */) {
+      request.onsuccess = function(event) {
         // console.log('success - getRecords', request.result);
-        resolve(request.result);
+        const cursor = event.target.result;
+        if (cursor) {
+          records.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(records);
+        }
       };
     });
   }
