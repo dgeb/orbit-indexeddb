@@ -1,6 +1,6 @@
 # OrbitIndexedDB [![Build Status](https://secure.travis-ci.org/orbitjs/orbit-indexeddb.png?branch=master)](http://travis-ci.org/orbitjs/orbit-indexeddb)
 
-OrbitLocalStorage is a data source for
+The OrbitIndexedDB library includes a data source for
 [Orbit.js](https://github.com/orbitjs/orbit-core)
 that accesses a browser's
 [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API).

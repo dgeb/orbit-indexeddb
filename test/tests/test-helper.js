@@ -15,10 +15,9 @@ import {
 } from './support/operations';
 
 import {
-  verifyLocalStorageIsEmpty,
-  verifyLocalStorageContainsRecord,
-  verifyLocalStorageDoesNotContainRecord
-} from './support/local-storage';
+  verifyIndexedDBContainsRecord,
+  verifyIndexedDBDoesNotContainRecord
+} from './support/indexeddb';
 
 import { planetsSchema } from './support/schemas';
 
@@ -30,8 +29,7 @@ export {
   op,
   successfulOperation,
   failedOperation,
-  verifyLocalStorageIsEmpty,
-  verifyLocalStorageContainsRecord,
-  verifyLocalStorageDoesNotContainRecord,
+  verifyIndexedDBContainsRecord,
+  verifyIndexedDBDoesNotContainRecord,
   planetsSchema
 };

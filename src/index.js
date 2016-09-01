@@ -1,3 +1,3 @@
-import LocalStorageSource from './local-storage-source';
+import IndexedDB from './indexeddb-source';
 
-export { LocalStorageSource };
+export { IndexedDB };

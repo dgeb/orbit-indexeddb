@@ -1,11 +1,10 @@
 import {
-  verifyLocalStorageContainsRecord,
-  verifyLocalStorageDoesNotContainRecord,
-  verifyLocalStorageIsEmpty
+  verifyIndexedDBContainsRecord,
+  verifyIndexedDBDoesNotContainRecord
 } from 'tests/test-helper';
 import Source from 'orbit/source';
 import Schema from 'orbit/schema';
-import LocalStorageSource from 'orbit-local-storage/local-storage-source';
+import IndexedDB from 'orbit-indexeddb/indexeddb-source';
 import Transform from 'orbit/transform';
 import {
   addRecord,
@@ -24,7 +23,7 @@ let schema, source;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-module('OC - LocalStorageSource', {
+module('OC - IndexedDB', {
   setup() {
     schema = new Schema({
       models: {
@@ -33,7 +32,7 @@ module('OC - LocalStorageSource', {
       }
     });
 
-    source = new LocalStorageSource({ schema });
+    source = new IndexedDB({ schema });
   },
 
   teardown() {
@@ -64,16 +63,8 @@ test('implements Syncable', function(assert) {
   assert.ok(typeof source.sync === 'function', 'has `sync` method');
 });
 
-test('is assigned a default namespace and delimiter', function(assert) {
-  assert.equal(source.namespace, 'orbit', 'namespace is `orbit` by default');
-  assert.equal(source.delimiter, '/', 'delimiter is `/` by default');
-});
-
-test('#getKeyForRecord returns the local storage key that will be used for a record', function(assert) {
-  assert.equal(
-    source.getKeyForRecord({type: 'planet', id: 'jupiter'}),
-    'orbit/planet/jupiter'
-  );
+test('is assigned a default dbName', function(assert) {
+  assert.equal(source.dbName, 'orbit', '`dbName` is `orbit` by default');
 });
 
 test('#push - addRecord', function(assert) {
@@ -89,7 +80,7 @@ test('#push - addRecord', function(assert) {
   });
 
   return source.push(Transform.from(addRecord(planet)))
-    .then(() => verifyLocalStorageContainsRecord(source, planet));
+    .then(() => verifyIndexedDBContainsRecord(source, planet));
 });
 
 test('#push - replaceRecord', function(assert) {
@@ -116,7 +107,7 @@ test('#push - replaceRecord', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(replaceRecord(revised))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#push - removeRecord', function(assert) {
@@ -133,7 +124,7 @@ test('#push - removeRecord', function(assert) {
 
   return source.push(Transform.from(addRecord(planet)))
     .then(() => source.push(Transform.from(removeRecord(planet))))
-    .then(() => verifyLocalStorageDoesNotContainRecord(source, planet));
+    .then(() => verifyIndexedDBDoesNotContainRecord(source, planet));
 });
 
 test('#push - replaceKey', function(assert) {
@@ -162,7 +153,7 @@ test('#push - replaceKey', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(replaceKey(original, 'remoteId', '123'))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#push - replaceAttribute', function(assert) {
@@ -189,7 +180,7 @@ test('#push - replaceAttribute', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(replaceAttribute(original, 'order', 5))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#push - addToHasMany', function(assert) {
@@ -227,7 +218,7 @@ test('#push - addToHasMany', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(addToHasMany(original, 'moons', { type: 'moon', id: 'moon1' }))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#push - removeFromHasMany', function(assert) {
@@ -268,7 +259,7 @@ test('#push - removeFromHasMany', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(removeFromHasMany(original, 'moons', { type: 'moon', id: 'moon2' }))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#push - replaceHasMany', function(assert) {
@@ -309,7 +300,7 @@ test('#push - replaceHasMany', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(replaceHasMany(original, 'moons', [{ type: 'moon', id: 'moon2' }, { type: 'moon', id: 'moon3' }]))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#push - replaceHasOne - record', function(assert) {
@@ -345,7 +336,7 @@ test('#push - replaceHasOne - record', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(replaceHasOne(original, 'solarSystem', { type: 'solarSystem', id: 'ss1' }))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#push - replaceHasOne - null', function(assert) {
@@ -381,23 +372,7 @@ test('#push - replaceHasOne - null', function(assert) {
 
   return source.push(Transform.from(addRecord(original)))
     .then(() => source.push(Transform.from(replaceHasOne(original, 'solarSystem', null))))
-    .then(() => verifyLocalStorageContainsRecord(source, revised));
-});
-
-test('#reset - clears records for source', function(assert) {
-  assert.expect(2);
-
-  let planet = schema.normalize({
-    type: 'planet',
-    id: 'jupiter'
-  });
-
-  return source.push(Transform.from(addRecord(planet)))
-    .then(() => {
-      verifyLocalStorageContainsRecord(source, planet);
-      source.reset();
-    })
-    .then(() => verifyLocalStorageIsEmpty(source));
+    .then(() => verifyIndexedDBContainsRecord(source, revised));
 });
 
 test('#pull - all records', function(assert) {
@@ -428,8 +403,6 @@ test('#pull - all records', function(assert) {
       name: 'Io'
     }
   });
-
-  source.reset();
 
   return source.push(Transform.from([
     addRecord(earth),
@@ -476,8 +449,6 @@ test('#pull - records of one type', function(assert) {
     }
   });
 
-  source.reset();
-
   return source.push(Transform.from([
     addRecord(earth),
     addRecord(jupiter),
@@ -523,13 +494,15 @@ test('#pull - a specific record', function(assert) {
     }
   });
 
-  source.reset();
-
-  return source.push(Transform.from([
-    addRecord(earth),
-    addRecord(jupiter),
-    addRecord(io)
-  ]))
+  return source.clearRecords('planet')
+    .then(() => source.clearRecords('moon'))
+    .then(() => {
+      return source.push(Transform.from([
+        addRecord(earth),
+        addRecord(jupiter),
+        addRecord(io)
+      ]));
+    })
     .then(() => source.pull(qb.record(jupiter)))
     .then(transforms => {
       assert.equal(transforms.length, 1, 'one transform returned');

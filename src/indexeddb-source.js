@@ -8,68 +8,192 @@ import { assert } from 'orbit/lib/assert';
 import TransformOperators from './lib/transform-operators';
 import { QueryOperators } from './lib/queries';
 
-var supportsLocalStorage = function() {
+var supportsIndexedDB = function() {
   try {
-    return 'localStorage' in self && self['localStorage'] !== null;
+    return 'indexedDB' in self && self['indexedDB'] !== null;
   } catch (e) {
     return false;
   }
 };
 
 /**
- Source for storing data in IndexedDB.
-
- @class IndexedDBSource
- @extends Source
- @namespace OC
- @param {Object}    [options]
- @param {OC.Schema} [options.schema] Schema for source (required)
- @constructor
+ * Source for storing data in IndexedDB.
+ *
+ * @class IndexedDBSource
+ * @extends Source
  */
 export default class IndexedDBSource extends Source {
+  /**
+   * Create a new IndexedDBSource.
+   *
+   * @constructor
+   * @param {Object}  [options]
+   * @param {Schema}  [options.schema]    Schema for source.
+   * @param {String}  [options.name]      Optional. Name for source. Defaults to 'indexedDB'.
+   * @param {String}  [options.dbName]    Optional. Name of the IndexedDB database. Defaults to 'orbit'.
+   * @param {Integer} [options.dbVersion] Optional. The version to open the IndexedDB database with. IndexedDB's default verions is 1.
+   */
   constructor(options = {}) {
-    assert('LocalStorageSource\'s `schema` must be specified in `options.schema` constructor argument', options.schema);
-    assert('Your browser does not support local storage!', supportsLocalStorage());
+    assert('IndexedDBSource\'s `schema` must be specified in `options.schema` constructor argument', options.schema);
+    assert('Your browser does not support IndexedDB!', supportsIndexedDB());
 
     super(options);
 
-    this.name      = options.name || 'localStorage';
-    this.namespace = options['namespace'] || 'orbit'; // local storage namespace
-    this.delimiter = options['delimiter'] || '/'; // local storage key
+    this.name       = options.name || 'indexedDB';
+    this.dbName    = options.dbName || 'orbit';
+    this.dbVersion = options.dbVersion;
   }
 
-  getKeyForRecord(record) {
-    return [this.namespace, record.type, record.id].join(this.delimiter);
+  openDB() {
+    return new Orbit.Promise((resolve, reject) => {
+      if (this._db) {
+        resolve(this._db);
+      } else {
+        let request = self.indexedDB.open(this.dbName, this.dbVersion);
+
+        request.onerror = (/* event */) => {
+          console.error('error opening indexedDB', this.dbName);
+          reject(request.errorCode);
+        };
+
+        request.onsuccess = (/* event */) => {
+          // console.log('success opening indexedDB', this.dbName);
+          const db = this._db = request.result;
+          resolve(db);
+        };
+
+        request.onupgradeneeded = (event) => {
+          // console.log('indexedDB upgrade needed');
+          const db = this._db = event.target.result;
+          // TODO - conditionally call migrateDB
+          this.createDB(db);
+        };
+      }
+    });
   }
+
+  createDB(db) {
+    Object.keys(this.schema.models).forEach(model => {
+      db.createObjectStore(model, { keyPath: 'id' });
+      // TODO - create indices
+    });
+  }
+
+  deleteDB() {
+    return new Orbit.Promise((resolve, reject) => {
+      let request = self.indexedDB.deleteDatabase(this.dbName);
+
+      request.onerror = (/* event */) => {
+        console.error('error deleting indexedDB', this.dbName);
+        reject(request.errorCode);
+      };
+
+      request.onsuccess = (/* event */) => {
+        // console.log('success deleting indexedDB', this.dbName);
+        this._db = null;
+        resolve();
+      };
+    });
+  }
+
+  // TODO
+  // migrateDB(db) {
+  //
+  // }
 
   getRecord(record) {
-    const key = this.getKeyForRecord(record);
+    return new Orbit.Promise((resolve, reject) => {
+      const transaction = this._db.transaction([record.type]);
+      const objectStore = transaction.objectStore(record.type);
+      const request = objectStore.get(record.id);
 
-    return JSON.parse(self.localStorage.getItem(key));
+      request.onerror = function(/* event */) {
+        console.error('error - getRecord', request.errorCode);
+        reject(request.errorCode);
+      };
+
+      request.onsuccess = function(/* event */) {
+        // console.log('success - getRecord', request.result);
+        resolve(request.result);
+      };
+    });
+  }
+
+  getRecords(type) {
+    return new Orbit.Promise((resolve, reject) => {
+      const transaction = this._db.transaction([type]);
+      const objectStore = transaction.objectStore(type);
+      const request = objectStore.getAll();
+
+      request.onerror = function(/* event */) {
+        console.error('error - getRecords', request.errorCode);
+        reject(request.errorCode);
+      };
+
+      request.onsuccess = function(/* event */) {
+        // console.log('success - getRecords', request.result);
+        resolve(request.result);
+      };
+    });
   }
 
   putRecord(record) {
-    const key = this.getKeyForRecord(record);
+    const transaction = this._db.transaction([record.type], 'readwrite');
+    const objectStore = transaction.objectStore(record.type);
 
-    // console.log('LocalStorageSource#putRecord', key, JSON.stringify(record));
+    return new Orbit.Promise((resolve, reject) => {
+      const request = objectStore.put(record);
 
-    self.localStorage.setItem(key, JSON.stringify(record));
+      request.onerror = function(/* event */) {
+        console.error('error - putRecord', request.errorCode);
+        reject(request.errorCode);
+      };
+
+      request.onsuccess = function(/* event */) {
+        // console.log('success - putRecord');
+        resolve();
+      };
+    });
   }
 
   removeRecord(record) {
-    const key = this.getKeyForRecord(record);
+    return new Orbit.Promise((resolve, reject) => {
+      const transaction = this._db.transaction([record.type], 'readwrite');
+      const objectStore = transaction.objectStore(record.type);
+      const request = objectStore.delete(record.id);
 
-    // console.log('LocalStorageSource#removeRecord', key, JSON.stringify(record));
+      request.onerror = function(/* event */) {
+        console.error('error - removeRecord', request.errorCode);
+        reject(request.errorCode);
+      };
 
-    self.localStorage.removeItem(key);
+      request.onsuccess = function(/* event */) {
+        // console.log('success - removeRecord');
+        resolve();
+      };
+    });
   }
 
-  reset() {
-    for (let key in self.localStorage) {
-      if (key.indexOf(this.namespace) === 0) {
-        self.localStorage.removeItem(key);
-      }
+  clearRecords(type) {
+    if (!this._db) {
+      return Orbit.Promise.resolve();
     }
+
+    return new Orbit.Promise((resolve, reject) => {
+      const transaction = this._db.transaction([type], 'readwrite');
+      const objectStore = transaction.objectStore(type);
+      const request = objectStore.clear();
+
+      request.onerror = function(/* event */) {
+        console.error('error - removeRecords', request.errorCode);
+        reject(request.errorCode);
+      };
+
+      request.onsuccess = function(/* event */) {
+        // console.log('success - removeRecords');
+        resolve();
+      };
+    });
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -77,8 +201,7 @@ export default class IndexedDBSource extends Source {
   /////////////////////////////////////////////////////////////////////////////
 
   _sync(transform) {
-    this._applyTransform(transform);
-    return Orbit.Promise.resolve();
+    return this._processTransform(transform);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -86,8 +209,8 @@ export default class IndexedDBSource extends Source {
   /////////////////////////////////////////////////////////////////////////////
 
   _push(transform) {
-    this._applyTransform(transform);
-    return Orbit.Promise.resolve([transform]);
+    return this._processTransform(transform)
+      .then(() => [transform]);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -95,22 +218,29 @@ export default class IndexedDBSource extends Source {
   /////////////////////////////////////////////////////////////////////////////
 
   _pull(query) {
-    const transforms = QueryOperators[query.expression.op](this, query.expression);
-
-    return Orbit.Promise.resolve(transforms);
+    return this.openDB()
+      .then(() => QueryOperators[query.expression.op](this, query.expression));
   }
 
   /////////////////////////////////////////////////////////////////////////////
   // Private
   /////////////////////////////////////////////////////////////////////////////
 
-  _applyTransform(transform) {
-    transform.operations.forEach(operation => {
-      TransformOperators[operation.op](this, operation);
-    });
+  _processTransform(transform) {
+    return this.openDB()
+      .then(() => {
+        let result = Orbit.Promise.resolve();
+
+        transform.operations.forEach(operation => {
+          let processor = TransformOperators[operation.op];
+          result = result.then(() => processor(this, operation));
+        });
+
+        return result;
+      });
   }
 }
 
-Pullable.extend(LocalStorageSource.prototype);
-Pushable.extend(LocalStorageSource.prototype);
-Syncable.extend(LocalStorageSource.prototype);
+Pullable.extend(IndexedDBSource.prototype);
+Pushable.extend(IndexedDBSource.prototype);
+Syncable.extend(IndexedDBSource.prototype);
