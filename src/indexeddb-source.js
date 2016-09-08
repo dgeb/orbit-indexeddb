@@ -5,16 +5,9 @@ import Pullable from 'orbit/interfaces/pullable';
 import Pushable from 'orbit/interfaces/pushable';
 import Syncable from 'orbit/interfaces/syncable';
 import { assert } from 'orbit/lib/assert';
+import { supportsIndexedDB } from './lib/indexeddb';
 import TransformOperators from './lib/transform-operators';
 import { QueryOperators } from './lib/queries';
-
-var supportsIndexedDB = function() {
-  try {
-    return 'indexedDB' in self && self['indexedDB'] !== null;
-  } catch (e) {
-    return false;
-  }
-};
 
 /**
  * Source for storing data in IndexedDB.
