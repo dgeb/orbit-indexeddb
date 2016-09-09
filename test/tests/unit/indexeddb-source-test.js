@@ -23,7 +23,7 @@ let schema, source;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-module('OC - IndexedDB', {
+module('IndexedDBSource', {
   setup() {
     schema = new Schema({
       models: {

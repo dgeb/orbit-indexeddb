@@ -30,9 +30,10 @@ export default class IndexedDBSource extends Source {
     assert('IndexedDBSource\'s `schema` must be specified in `options.schema` constructor argument', options.schema);
     assert('Your browser does not support IndexedDB!', supportsIndexedDB());
 
+    options.name = options.name || 'indexedDB';
+
     super(options);
 
-    this.name       = options.name || 'indexedDB';
     this.dbName    = options.dbName || 'orbit';
     this.dbVersion = options.dbVersion;
   }
