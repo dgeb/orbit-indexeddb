@@ -5,16 +5,9 @@ import Pullable from 'orbit/interfaces/pullable';
 import Pushable from 'orbit/interfaces/pushable';
 import Syncable from 'orbit/interfaces/syncable';
 import { assert } from 'orbit/lib/assert';
+import { supportsIndexedDB } from './lib/indexeddb';
 import TransformOperators from './lib/transform-operators';
 import { QueryOperators } from './lib/queries';
-
-var supportsIndexedDB = function() {
-  try {
-    return 'indexedDB' in self && self['indexedDB'] !== null;
-  } catch (e) {
-    return false;
-  }
-};
 
 /**
  * Source for storing data in IndexedDB.
@@ -37,9 +30,10 @@ export default class IndexedDBSource extends Source {
     assert('IndexedDBSource\'s `schema` must be specified in `options.schema` constructor argument', options.schema);
     assert('Your browser does not support IndexedDB!', supportsIndexedDB());
 
+    options.name = options.name || 'indexedDB';
+
     super(options);
 
-    this.name       = options.name || 'indexedDB';
     this.dbName    = options.dbName || 'orbit';
     this.dbVersion = options.dbVersion;
   }

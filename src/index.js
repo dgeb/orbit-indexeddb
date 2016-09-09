@@ -1,3 +1,4 @@
-import IndexedDB from './indexeddb-source';
+import IndexedDBSource from './indexeddb-source';
+import IndexedDBBucket from './indexeddb-bucket';
 
-export { IndexedDB };
+export { IndexedDBSource, IndexedDBBucket };
