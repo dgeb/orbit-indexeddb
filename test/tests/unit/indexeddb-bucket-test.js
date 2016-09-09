@@ -1,7 +1,3 @@
-import {
-  verifyBucketContainsItem,
-  verifyBucketDoesNotContainItem
-} from 'tests/test-helper';
 import Bucket from 'orbit/bucket';
 import IndexedDBBucket from 'orbit-indexeddb/indexeddb-bucket';
 
@@ -27,8 +23,8 @@ module('IndexedDBBucket', function(hooks) {
     assert.equal(bucket.dbStoreName, 'data', '`dbStoreName` is `data` by default');
   });
 
-  test('#setItem', function(assert) {
-    assert.expect(1);
+  test('#setItem sets a value, #getItem gets a value, #removeItem removes a value', function(assert) {
+    assert.expect(3);
 
     let planet = {
       type: 'planet',
@@ -39,41 +35,13 @@ module('IndexedDBBucket', function(hooks) {
       }
     };
 
-    return bucket.setItem('planet', planet)
-      .then(() => verifyBucketContainsItem(bucket, 'planet', planet));
-  });
-
-  test('#getItem', function(assert) {
-    assert.expect(1);
-
-    let planet = {
-      type: 'planet',
-      id: 'jupiter',
-      attributes: {
-        name: 'Jupiter',
-        classification: 'gas giant'
-      }
-    };
-
-    return bucket.setItem('planet', planet)
+    return bucket.getItem('planet')
+      .then(item => assert.equal(item, null, 'bucket does not contain item'))
+      .then(() => bucket.setItem('planet', planet))
       .then(() => bucket.getItem('planet'))
-      .then(found => assert.deepEqual(found, planet));
-  });
-
-  test('#removeItem', function(assert) {
-    assert.expect(1);
-
-    let planet = {
-      type: 'planet',
-      id: 'jupiter',
-      attributes: {
-        name: 'Jupiter',
-        classification: 'gas giant'
-      }
-    };
-
-    return bucket.setItem('planet', planet)
+      .then(item => assert.deepEqual(item, planet, 'bucket contains item'))
       .then(() => bucket.removeItem('planet'))
-      .then(() => verifyBucketDoesNotContainItem(bucket, 'planet'));
+      .then(() => bucket.getItem('planet'))
+      .then(item => assert.equal(item, null, 'bucket does not contain item'));
   });
 });

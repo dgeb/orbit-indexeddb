@@ -16,9 +16,7 @@ import {
 
 import {
   verifyIndexedDBContainsRecord,
-  verifyIndexedDBDoesNotContainRecord,
-  verifyBucketContainsItem,
-  verifyBucketDoesNotContainItem
+  verifyIndexedDBDoesNotContainRecord
 } from './support/indexeddb';
 
 import { planetsSchema } from './support/schemas';
@@ -33,7 +31,5 @@ export {
   failedOperation,
   verifyIndexedDBContainsRecord,
   verifyIndexedDBDoesNotContainRecord,
-  verifyBucketContainsItem,
-  verifyBucketDoesNotContainItem,
   planetsSchema
 };
