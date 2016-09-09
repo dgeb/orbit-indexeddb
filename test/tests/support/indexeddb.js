@@ -55,3 +55,39 @@ export function verifyIndexedDBDoesNotContainRecord(source, record) {
       equal(actual, null, 'indexedDB does not contain record');
     });
 }
+
+function getItem(bucket, key) {
+  return openDB(bucket)
+    .then(db => {
+      const transaction = db.transaction([bucket.dbStoreName]);
+      const objectStore = transaction.objectStore(bucket.dbStoreName);
+
+      return new Orbit.Promise((resolve, reject) => {
+        const request = objectStore.get(key);
+
+        request.onerror = function(/* event */) {
+          // console.error('error - getItem', request.errorCode);
+          reject(request.errorCode);
+        };
+
+        request.onsuccess = function(/* event */) {
+          // console.log('success - getItem', request.result);
+          resolve(request.result);
+        };
+      });
+    });
+}
+
+export function verifyBucketContainsItem(bucket, key, value) {
+  return getItem(bucket, key)
+    .then(actual => {
+      deepEqual(actual, value, 'bucket contains item');
+    });
+}
+
+export function verifyBucketDoesNotContainItem(bucket, key) {
+  return getItem(bucket, key)
+    .then(actual => {
+      equal(actual, null, 'bucket does not contain item');
+    });
+}
