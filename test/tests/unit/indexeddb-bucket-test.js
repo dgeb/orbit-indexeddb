@@ -18,9 +18,15 @@ module('IndexedDBBucket', function(hooks) {
     assert.ok(bucket instanceof Bucket, 'instanceof Bucket');
   });
 
-  test('is assigned a default dbName and dbStoreName', function(assert) {
+  test('is assigned a default `dbName` and `dbStoreName`', function(assert) {
     assert.equal(bucket.dbName, 'orbit-bucket', '`dbName` is `orbit-bucket` by default');
     assert.equal(bucket.dbStoreName, 'data', '`dbStoreName` is `data` by default');
+  });
+
+  test('can override `dbName` and `dbStoreName` via `namespace` and `storeName` settings', function(assert) {
+    const custom  = new IndexedDBBucket({ namespace: 'orbit-settings', storeName: 'settings' });
+    assert.equal(custom.dbName, 'orbit-settings', '`dbName` has been customized');
+    assert.equal(custom.dbStoreName, 'settings', '`dbStoreName` has been customized');
   });
 
   test('#setItem sets a value, #getItem gets a value, #removeItem removes a value', function(assert) {

@@ -20,11 +20,10 @@ export default class IndexedDBSource extends Source {
    * Create a new IndexedDBSource.
    *
    * @constructor
-   * @param {Object}  [options]
-   * @param {Schema}  [options.schema]    Schema for source.
+   * @param {Object}  [options = {}]
+   * @param {Schema}  [options.schema]    Orbit Schema.
    * @param {String}  [options.name]      Optional. Name for source. Defaults to 'indexedDB'.
-   * @param {String}  [options.dbName]    Optional. Name of the IndexedDB database. Defaults to 'orbit'.
-   * @param {Integer} [options.dbVersion] Optional. The version to open the IndexedDB database with. IndexedDB's default verions is 1.
+   * @param {String}  [options.namespace] Optional. Namespace of the application. Will be used for the IndexedDB database name. Defaults to 'orbit'.
    */
   constructor(options = {}) {
     assert('IndexedDBSource\'s `schema` must be specified in `options.schema` constructor argument', options.schema);
@@ -34,8 +33,27 @@ export default class IndexedDBSource extends Source {
 
     super(options);
 
-    this.dbName    = options.dbName || 'orbit';
-    this.dbVersion = options.dbVersion;
+    this._namespace = options.namespace || 'orbit';
+  }
+
+  /**
+   * The version to specify when opening the IndexedDB database.
+   *
+   * @return {Integer} Version number.
+   */
+  get dbVersion() {
+    return this.schema.version;
+  }
+
+  /**
+   * IndexedDB database name.
+   *
+   * Defaults to the namespace of the app, which can be overridden in the constructor.
+   *
+   * @return {String} Database name.
+   */
+  get dbName() {
+    return this._namespace;
   }
 
   openDB() {
@@ -68,9 +86,13 @@ export default class IndexedDBSource extends Source {
 
   createDB(db) {
     Object.keys(this.schema.models).forEach(model => {
-      db.createObjectStore(model, { keyPath: 'id' });
-      // TODO - create indices
+      this.registerModel(db, model);
     });
+  }
+
+  registerModel(db, model) {
+    db.createObjectStore(model, { keyPath: 'id' });
+    // TODO - create indices
   }
 
   deleteDB() {

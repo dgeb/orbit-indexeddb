@@ -15,20 +15,53 @@ export default class IndexedDBBucket extends Bucket {
    * Create a new IndexedDBBucket.
    *
    * @constructor
-   * @param {Object}  [options]
+   * @param {Object}  [options = {}]
    * @param {String}  [options.name]        Optional. Name of this bucket.
-   * @param {String}  [options.dbName]      Optional. Name of the IndexedDB database. Defaults to 'orbit-bucket'.
-   * @param {String}  [options.dbStoreName] Optional. Name of the store within the database. Defaults to 'data'.
-   * @param {Integer} [options.dbVersion]   Optional. The version to open the IndexedDB database with. IndexedDB's default verions is 1.
+   * @param {String}  [options.namespace]   Optional. Namespace of the bucket. Will be used for the IndexedDB database name. Defaults to 'orbit-bucket'.
+   * @param {String}  [options.storeName]   Optional. Name of the IndexedDB ObjectStore. Defaults to 'data'.
+   * @param {Integer} [options.version]     Optional. The version to open the IndexedDB database with. Defaults to `1`.
    */
   constructor(options = {}) {
     assert('Your browser does not support IndexedDB!', supportsIndexedDB());
 
     super(options);
 
-    this.dbName      = options.dbName || 'orbit-bucket';
-    this.dbStoreName = options.dbStoreName || 'data';
-    this.dbVersion   = options.dbVersion;
+    this._namespace = options.namespace || 'orbit-bucket';
+    this._version   = options.version || 1;
+    this._storeName = options.storeName || 'data';
+  }
+
+  /**
+   * The version to specify when opening the IndexedDB database.
+   *
+   * IndexedDB's default verions is 1.
+   *
+   * @return {Integer} Version number.
+   */
+  get dbVersion() {
+    return this._version;
+  }
+
+  /**
+   * IndexedDB database name.
+   *
+   * Defaults to 'orbit-bucket', which can be overridden in the constructor.
+   *
+   * @return {String} Database name.
+   */
+  get dbName() {
+    return this._namespace;
+  }
+
+  /**
+   * IndexedDB ObjectStore name.
+   *
+   * Defaults to 'settings', which can be overridden in the constructor.
+   *
+   * @return {String} Database name.
+   */
+  get dbStoreName() {
+    return this._storeName;
   }
 
   openDB() {
