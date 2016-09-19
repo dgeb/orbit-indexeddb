@@ -31,6 +31,12 @@ export default class IndexedDBBucket extends Bucket {
     this._storeName = options.storeName || 'data';
   }
 
+  upgrade(version) {
+    this.closeDB();
+    this._version = version;
+    return this.openDB();
+  }
+
   /**
    * The version to specify when opening the IndexedDB database.
    *
@@ -64,6 +70,10 @@ export default class IndexedDBBucket extends Bucket {
     return this._storeName;
   }
 
+  get isDBOpen() {
+    return !!this._db;
+  }
+
   openDB() {
     return new Orbit.Promise((resolve, reject) => {
       if (this._db) {
@@ -73,7 +83,7 @@ export default class IndexedDBBucket extends Bucket {
 
         request.onerror = (/* event */) => {
           console.error('error opening indexedDB', this.dbName);
-          reject(request.errorCode);
+          reject(request.error);
         };
 
         request.onsuccess = (/* event */) => {
@@ -85,24 +95,51 @@ export default class IndexedDBBucket extends Bucket {
         request.onupgradeneeded = (event) => {
           // console.log('indexedDB upgrade needed');
           const db = this._db = event.target.result;
-          // TODO - conditionally call migrateDB
-          this.createDB(db);
+          if (event && event.oldVersion > 0) {
+            this.migrateDB(db, event);
+          } else {
+            this.createDB(db);
+          }
         };
       }
     });
+  }
+
+  closeDB() {
+    if (this.isDBOpen) {
+      this._db.close();
+      this._db = null;
+    }
+  }
+
+  reopenDB() {
+    this.closeDB();
+    return this.openDB();
   }
 
   createDB(db) {
     db.createObjectStore(this.dbStoreName); //, { keyPath: 'key' });
   }
 
+  /**
+   * Migrate database.
+   *
+   * @param  {IDBDatabase} db              Database to upgrade.
+   * @param  {IDBVersionChangeEvent} event Event resulting from version change.
+   */
+  migrateDB(db, event) {
+    console.error('IndexedDBBucket#migrateDB - should be overridden to upgrade IDBDatabase from: ', event.oldVersion, ' -> ', event.newVersion);
+  }
+
   deleteDB() {
+    this.closeDB();
+
     return new Orbit.Promise((resolve, reject) => {
       let request = self.indexedDB.deleteDatabase(this.dbName);
 
       request.onerror = (/* event */) => {
         console.error('error deleting indexedDB', this.dbName);
-        reject(request.errorCode);
+        reject(request.error);
       };
 
       request.onsuccess = (/* event */) => {
@@ -127,8 +164,8 @@ export default class IndexedDBBucket extends Bucket {
           const request = objectStore.get(key);
 
           request.onerror = function(/* event */) {
-            console.error('error - getItem', request.errorCode);
-            reject(request.errorCode);
+            console.error('error - getItem', request.error);
+            reject(request.error);
           };
 
           request.onsuccess = function(/* event */) {
@@ -149,8 +186,8 @@ export default class IndexedDBBucket extends Bucket {
           const request = objectStore.put(value, key);
 
           request.onerror = function(/* event */) {
-            console.error('error - setItem', request.errorCode);
-            reject(request.errorCode);
+            console.error('error - setItem', request.error);
+            reject(request.error);
           };
 
           request.onsuccess = function(/* event */) {
@@ -170,8 +207,8 @@ export default class IndexedDBBucket extends Bucket {
           const request = objectStore.delete(key);
 
           request.onerror = function(/* event */) {
-            console.error('error - removeItem', request.errorCode);
-            reject(request.errorCode);
+            console.error('error - removeItem', request.error);
+            reject(request.error);
           };
 
           request.onsuccess = function(/* event */) {

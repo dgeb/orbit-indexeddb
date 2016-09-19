@@ -10,6 +10,10 @@ module('IndexedDBBucket', function(hooks) {
     bucket = new IndexedDBBucket();
   });
 
+  hooks.afterEach(() => {
+    return bucket.deleteDB();
+  });
+
   test('it exists', function(assert) {
     assert.ok(bucket);
   });
@@ -27,6 +31,25 @@ module('IndexedDBBucket', function(hooks) {
     const custom  = new IndexedDBBucket({ namespace: 'orbit-settings', storeName: 'settings' });
     assert.equal(custom.dbName, 'orbit-settings', '`dbName` has been customized');
     assert.equal(custom.dbStoreName, 'settings', '`dbStoreName` has been customized');
+  });
+
+  test('#upgrade changes the version, calls migrateDB, and then reopens the DB', function(assert) {
+    assert.expect(5);
+
+    bucket.migrateDB = function(db, event) {
+      assert.equal(event.oldVersion, 1, 'migrateDB called with oldVersion == 1');
+      assert.equal(event.newVersion, 2, 'migrateDB called with newVersion == 2');
+    };
+
+    return bucket.openDB()
+      .then(() => {
+        assert.equal(bucket.dbVersion, 1, 'version == 1');
+        return bucket.upgrade(2);
+      })
+      .then(() => {
+        assert.equal(bucket.dbVersion, 2, 'version == 2');
+        assert.equal(bucket.isDBOpen, true, 'DB has been reopened');
+      });
   });
 
   test('#setItem sets a value, #getItem gets a value, #removeItem removes a value', function(assert) {
