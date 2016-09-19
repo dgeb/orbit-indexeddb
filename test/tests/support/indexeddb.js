@@ -1,20 +1,7 @@
 import Orbit from 'orbit';
 
-function openDB(source) {
-  return new Orbit.Promise((resolve, reject) => {
-    let request = self.indexedDB.open(source.dbName, source.dbVersion);
-
-    request.onerror = function(/* event */) {
-      reject(request.errorCode);
-    };
-
-    request.onsuccess = function(/* event */) {
-      resolve(request.result);
-    };
-  });}
-
 function getRecord(source, record) {
-  return openDB(source)
+  return source.openDB()
     .then(db => {
       const transaction = db.transaction([record.type]);
       const objectStore = transaction.objectStore(record.type);
@@ -23,8 +10,8 @@ function getRecord(source, record) {
         const request = objectStore.get(record.id);
 
         request.onerror = function(/* event */) {
-          // console.error('error - getRecord', request.errorCode);
-          reject(request.errorCode);
+          // console.error('error - getRecord', request.error);
+          reject(request.error);
         };
 
         request.onsuccess = function(/* event */) {

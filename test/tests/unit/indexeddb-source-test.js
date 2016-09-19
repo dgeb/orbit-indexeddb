@@ -36,7 +36,7 @@ module('IndexedDBSource', function(hooks) {
   });
 
   hooks.afterEach(() => {
-    schema = source = null;
+    return source.deleteDB();
   });
 
   test('it exists', function(assert) {
@@ -64,6 +64,43 @@ module('IndexedDBSource', function(hooks) {
 
   test('is assigned a default dbName', function(assert) {
     assert.equal(source.dbName, 'orbit', '`dbName` is `orbit` by default');
+  });
+
+  test('will reopen the database when the schema is upgraded', function(assert) {
+    const done = assert.async();
+
+    assert.expect(5);
+
+    assert.equal(source.dbVersion, 1, 'db starts with version == 1');
+
+    source.migrateDB = function(db, event) {
+      assert.equal(event.oldVersion, 1, 'migrateDB called with oldVersion == 1');
+      assert.equal(event.newVersion, 2, 'migrateDB called with newVersion == 2');
+      done();
+    };
+
+    schema.on('upgrade', (version) => {
+      assert.equal(version, 2, 'schema has upgraded to v2');
+      assert.equal(source.dbVersion, 2, 'db has the correct version');
+    });
+
+    source.openDB()
+      .then(() => {
+        schema.upgrade({
+          models: {
+            planet: {
+              attributes: {
+                name: { type: 'string' }
+              }
+            },
+            moon: {
+              attributes: {
+                name: { type: 'string' }
+              }
+            }
+          }
+        });
+      });
   });
 
   test('#push - addRecord', function(assert) {
