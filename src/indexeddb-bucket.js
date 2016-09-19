@@ -15,20 +15,63 @@ export default class IndexedDBBucket extends Bucket {
    * Create a new IndexedDBBucket.
    *
    * @constructor
-   * @param {Object}  [options]
+   * @param {Object}  [options = {}]
    * @param {String}  [options.name]        Optional. Name of this bucket.
-   * @param {String}  [options.dbName]      Optional. Name of the IndexedDB database. Defaults to 'orbit-bucket'.
-   * @param {String}  [options.dbStoreName] Optional. Name of the store within the database. Defaults to 'data'.
-   * @param {Integer} [options.dbVersion]   Optional. The version to open the IndexedDB database with. IndexedDB's default verions is 1.
+   * @param {String}  [options.namespace]   Optional. Namespace of the bucket. Will be used for the IndexedDB database name. Defaults to 'orbit-bucket'.
+   * @param {String}  [options.storeName]   Optional. Name of the IndexedDB ObjectStore. Defaults to 'data'.
+   * @param {Integer} [options.version]     Optional. The version to open the IndexedDB database with. Defaults to `1`.
    */
   constructor(options = {}) {
     assert('Your browser does not support IndexedDB!', supportsIndexedDB());
 
     super(options);
 
-    this.dbName      = options.dbName || 'orbit-bucket';
-    this.dbStoreName = options.dbStoreName || 'data';
-    this.dbVersion   = options.dbVersion;
+    this._namespace = options.namespace || 'orbit-bucket';
+    this._version   = options.version || 1;
+    this._storeName = options.storeName || 'data';
+  }
+
+  upgrade(version) {
+    this.closeDB();
+    this._version = version;
+    return this.openDB();
+  }
+
+  /**
+   * The version to specify when opening the IndexedDB database.
+   *
+   * IndexedDB's default verions is 1.
+   *
+   * @return {Integer} Version number.
+   */
+  get dbVersion() {
+    return this._version;
+  }
+
+  /**
+   * IndexedDB database name.
+   *
+   * Defaults to 'orbit-bucket', which can be overridden in the constructor.
+   *
+   * @return {String} Database name.
+   */
+  get dbName() {
+    return this._namespace;
+  }
+
+  /**
+   * IndexedDB ObjectStore name.
+   *
+   * Defaults to 'settings', which can be overridden in the constructor.
+   *
+   * @return {String} Database name.
+   */
+  get dbStoreName() {
+    return this._storeName;
+  }
+
+  get isDBOpen() {
+    return !!this._db;
   }
 
   openDB() {
@@ -40,7 +83,7 @@ export default class IndexedDBBucket extends Bucket {
 
         request.onerror = (/* event */) => {
           console.error('error opening indexedDB', this.dbName);
-          reject(request.errorCode);
+          reject(request.error);
         };
 
         request.onsuccess = (/* event */) => {
@@ -52,24 +95,51 @@ export default class IndexedDBBucket extends Bucket {
         request.onupgradeneeded = (event) => {
           // console.log('indexedDB upgrade needed');
           const db = this._db = event.target.result;
-          // TODO - conditionally call migrateDB
-          this.createDB(db);
+          if (event && event.oldVersion > 0) {
+            this.migrateDB(db, event);
+          } else {
+            this.createDB(db);
+          }
         };
       }
     });
+  }
+
+  closeDB() {
+    if (this.isDBOpen) {
+      this._db.close();
+      this._db = null;
+    }
+  }
+
+  reopenDB() {
+    this.closeDB();
+    return this.openDB();
   }
 
   createDB(db) {
     db.createObjectStore(this.dbStoreName); //, { keyPath: 'key' });
   }
 
+  /**
+   * Migrate database.
+   *
+   * @param  {IDBDatabase} db              Database to upgrade.
+   * @param  {IDBVersionChangeEvent} event Event resulting from version change.
+   */
+  migrateDB(db, event) {
+    console.error('IndexedDBBucket#migrateDB - should be overridden to upgrade IDBDatabase from: ', event.oldVersion, ' -> ', event.newVersion);
+  }
+
   deleteDB() {
+    this.closeDB();
+
     return new Orbit.Promise((resolve, reject) => {
       let request = self.indexedDB.deleteDatabase(this.dbName);
 
       request.onerror = (/* event */) => {
         console.error('error deleting indexedDB', this.dbName);
-        reject(request.errorCode);
+        reject(request.error);
       };
 
       request.onsuccess = (/* event */) => {
@@ -94,8 +164,8 @@ export default class IndexedDBBucket extends Bucket {
           const request = objectStore.get(key);
 
           request.onerror = function(/* event */) {
-            console.error('error - getItem', request.errorCode);
-            reject(request.errorCode);
+            console.error('error - getItem', request.error);
+            reject(request.error);
           };
 
           request.onsuccess = function(/* event */) {
@@ -116,8 +186,8 @@ export default class IndexedDBBucket extends Bucket {
           const request = objectStore.put(value, key);
 
           request.onerror = function(/* event */) {
-            console.error('error - setItem', request.errorCode);
-            reject(request.errorCode);
+            console.error('error - setItem', request.error);
+            reject(request.error);
           };
 
           request.onsuccess = function(/* event */) {
@@ -137,8 +207,8 @@ export default class IndexedDBBucket extends Bucket {
           const request = objectStore.delete(key);
 
           request.onerror = function(/* event */) {
-            console.error('error - removeItem', request.errorCode);
-            reject(request.errorCode);
+            console.error('error - removeItem', request.error);
+            reject(request.error);
           };
 
           request.onsuccess = function(/* event */) {

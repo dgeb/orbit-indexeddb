@@ -20,11 +20,10 @@ export default class IndexedDBSource extends Source {
    * Create a new IndexedDBSource.
    *
    * @constructor
-   * @param {Object}  [options]
-   * @param {Schema}  [options.schema]    Schema for source.
+   * @param {Object}  [options = {}]
+   * @param {Schema}  [options.schema]    Orbit Schema.
    * @param {String}  [options.name]      Optional. Name for source. Defaults to 'indexedDB'.
-   * @param {String}  [options.dbName]    Optional. Name of the IndexedDB database. Defaults to 'orbit'.
-   * @param {Integer} [options.dbVersion] Optional. The version to open the IndexedDB database with. IndexedDB's default verions is 1.
+   * @param {String}  [options.namespace] Optional. Namespace of the application. Will be used for the IndexedDB database name. Defaults to 'orbit'.
    */
   constructor(options = {}) {
     assert('IndexedDBSource\'s `schema` must be specified in `options.schema` constructor argument', options.schema);
@@ -34,8 +33,33 @@ export default class IndexedDBSource extends Source {
 
     super(options);
 
-    this.dbName    = options.dbName || 'orbit';
-    this.dbVersion = options.dbVersion;
+    this._namespace = options.namespace || 'orbit';
+
+    this.schema.on('upgrade', () => this.reopenDB());
+  }
+
+  /**
+   * The version to specify when opening the IndexedDB database.
+   *
+   * @return {Integer} Version number.
+   */
+  get dbVersion() {
+    return this.schema.version;
+  }
+
+  /**
+   * IndexedDB database name.
+   *
+   * Defaults to the namespace of the app, which can be overridden in the constructor.
+   *
+   * @return {String} Database name.
+   */
+  get dbName() {
+    return this._namespace;
+  }
+
+  get isDBOpen() {
+    return !!this._db;
   }
 
   openDB() {
@@ -46,8 +70,8 @@ export default class IndexedDBSource extends Source {
         let request = self.indexedDB.open(this.dbName, this.dbVersion);
 
         request.onerror = (/* event */) => {
-          console.error('error opening indexedDB', this.dbName);
-          reject(request.errorCode);
+          // console.error('error opening indexedDB', this.dbName);
+          reject(request.error);
         };
 
         request.onsuccess = (/* event */) => {
@@ -59,41 +83,68 @@ export default class IndexedDBSource extends Source {
         request.onupgradeneeded = (event) => {
           // console.log('indexedDB upgrade needed');
           const db = this._db = event.target.result;
-          // TODO - conditionally call migrateDB
-          this.createDB(db);
+          if (event && event.oldVersion > 0) {
+            this.migrateDB(db, event);
+          } else {
+            this.createDB(db);
+          }
         };
       }
     });
   }
 
+  closeDB() {
+    if (this.isDBOpen) {
+      this._db.close();
+      this._db = null;
+    }
+  }
+
+  reopenDB() {
+    this.closeDB();
+    return this.openDB();
+  }
+
   createDB(db) {
+    // console.log('createDB');
     Object.keys(this.schema.models).forEach(model => {
-      db.createObjectStore(model, { keyPath: 'id' });
-      // TODO - create indices
+      this.registerModel(db, model);
     });
   }
 
+  /**
+   * Migrate database.
+   *
+   * @param  {IDBDatabase} db              Database to upgrade.
+   * @param  {IDBVersionChangeEvent} event Event resulting from version change.
+   */
+  migrateDB(db, event) {
+    console.error('IndexedDBSource#migrateDB - should be overridden to upgrade IDBDatabase from: ', event.oldVersion, ' -> ', event.newVersion);
+  }
+
   deleteDB() {
+    this.closeDB();
+
     return new Orbit.Promise((resolve, reject) => {
       let request = self.indexedDB.deleteDatabase(this.dbName);
 
       request.onerror = (/* event */) => {
-        console.error('error deleting indexedDB', this.dbName);
-        reject(request.errorCode);
+        // console.error('error deleting indexedDB', this.dbName);
+        reject(request.error);
       };
 
       request.onsuccess = (/* event */) => {
         // console.log('success deleting indexedDB', this.dbName);
-        this._db = null;
         resolve();
       };
     });
   }
 
-  // TODO
-  // migrateDB(db) {
-  //
-  // }
+  registerModel(db, model) {
+    // console.log('registerModel', model);
+    db.createObjectStore(model, { keyPath: 'id' });
+    // TODO - create indices
+  }
 
   getRecord(record) {
     return new Orbit.Promise((resolve, reject) => {
@@ -102,8 +153,8 @@ export default class IndexedDBSource extends Source {
       const request = objectStore.get(record.id);
 
       request.onerror = function(/* event */) {
-        console.error('error - getRecord', request.errorCode);
-        reject(request.errorCode);
+        console.error('error - getRecord', request.error);
+        reject(request.error);
       };
 
       request.onsuccess = function(/* event */) {
@@ -121,8 +172,8 @@ export default class IndexedDBSource extends Source {
       const records = [];
 
       request.onerror = function(/* event */) {
-        console.error('error - getRecords', request.errorCode);
-        reject(request.errorCode);
+        console.error('error - getRecords', request.error);
+        reject(request.error);
       };
 
       request.onsuccess = function(event) {
@@ -157,8 +208,8 @@ export default class IndexedDBSource extends Source {
       const request = objectStore.put(record);
 
       request.onerror = function(/* event */) {
-        console.error('error - putRecord', request.errorCode);
-        reject(request.errorCode);
+        console.error('error - putRecord', request.error);
+        reject(request.error);
       };
 
       request.onsuccess = function(/* event */) {
@@ -175,8 +226,8 @@ export default class IndexedDBSource extends Source {
       const request = objectStore.delete(record.id);
 
       request.onerror = function(/* event */) {
-        console.error('error - removeRecord', request.errorCode);
-        reject(request.errorCode);
+        console.error('error - removeRecord', request.error);
+        reject(request.error);
       };
 
       request.onsuccess = function(/* event */) {
@@ -197,8 +248,8 @@ export default class IndexedDBSource extends Source {
       const request = objectStore.clear();
 
       request.onerror = function(/* event */) {
-        console.error('error - removeRecords', request.errorCode);
-        reject(request.errorCode);
+        console.error('error - removeRecords', request.error);
+        reject(request.error);
       };
 
       request.onsuccess = function(/* event */) {
