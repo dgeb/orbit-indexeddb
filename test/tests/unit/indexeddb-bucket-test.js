@@ -50,7 +50,7 @@ module('IndexedDBBucket', function(hooks) {
     return bucket.openDB()
       .then(() => {
         assert.equal(bucket.dbVersion, 1, 'version == 1');
-        return bucket.upgrade(2);
+        return bucket.upgrade({ version: 2 });
       })
       .then(() => {
         assert.equal(bucket.dbVersion, 2, 'version == 2');

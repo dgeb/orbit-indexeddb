@@ -30,10 +30,15 @@ export default class IndexedDBBucket extends Bucket {
     super(settings);
   }
 
-  upgrade(version) {
+  upgrade(settings) {
     this.closeDB();
-    this._version = version;
-    return this.openDB();
+    return super.upgrade(settings)
+      .then(() => this.openDB());
+  }
+
+  _applySettings(settings) {
+    this._storeName = settings.storeName;
+    return super._applySettings(settings);
   }
 
   /**
