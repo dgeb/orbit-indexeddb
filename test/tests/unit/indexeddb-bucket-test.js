@@ -22,6 +22,12 @@ module('IndexedDBBucket', function(hooks) {
     assert.ok(bucket instanceof Bucket, 'instanceof Bucket');
   });
 
+  test('is assigned a default `name`, `namespace`, and `version`', function(assert) {
+    assert.equal(bucket.name, 'indexedDB', '`name` is `indexedDB` by default');
+    assert.equal(bucket.namespace, 'orbit-bucket', '`namespace` is `orbit-bucket` by default');
+    assert.equal(bucket.version, 1, '`version` is `1` by default');
+  });
+
   test('is assigned a default `dbName` and `dbStoreName`', function(assert) {
     assert.equal(bucket.dbName, 'orbit-bucket', '`dbName` is `orbit-bucket` by default');
     assert.equal(bucket.dbStoreName, 'data', '`dbStoreName` is `data` by default');

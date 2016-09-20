@@ -15,20 +15,19 @@ export default class IndexedDBBucket extends Bucket {
    * Create a new IndexedDBBucket.
    *
    * @constructor
-   * @param {Object}  [options = {}]
-   * @param {String}  [options.name]        Optional. Name of this bucket.
-   * @param {String}  [options.namespace]   Optional. Namespace of the bucket. Will be used for the IndexedDB database name. Defaults to 'orbit-bucket'.
-   * @param {String}  [options.storeName]   Optional. Name of the IndexedDB ObjectStore. Defaults to 'data'.
-   * @param {Integer} [options.version]     Optional. The version to open the IndexedDB database with. Defaults to `1`.
+   * @param {Object}  [settings = {}]
+   * @param {String}  [settings.name]        Optional. Name of this bucket.
+   * @param {String}  [settings.namespace]   Optional. Namespace of the bucket. Will be used for the IndexedDB database name. Defaults to 'orbit-bucket'.
+   * @param {String}  [settings.storeName]   Optional. Name of the IndexedDB ObjectStore. Defaults to 'data'.
+   * @param {Integer} [settings.version]     Optional. The version to open the IndexedDB database with. Defaults to `1`.
    */
-  constructor(options = {}) {
+  constructor(settings = {}) {
     assert('Your browser does not support IndexedDB!', supportsIndexedDB());
 
-    super(options);
+    settings.name = settings.name || 'indexedDB';
+    settings.storeName = settings.storeName || 'data';
 
-    this._namespace = options.namespace || 'orbit-bucket';
-    this._version   = options.version || 1;
-    this._storeName = options.storeName || 'data';
+    super(settings);
   }
 
   upgrade(version) {
@@ -45,7 +44,7 @@ export default class IndexedDBBucket extends Bucket {
    * @return {Integer} Version number.
    */
   get dbVersion() {
-    return this._version;
+    return this.version;
   }
 
   /**
@@ -56,7 +55,7 @@ export default class IndexedDBBucket extends Bucket {
    * @return {String} Database name.
    */
   get dbName() {
-    return this._namespace;
+    return this.namespace;
   }
 
   /**
