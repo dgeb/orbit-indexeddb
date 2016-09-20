@@ -22,6 +22,12 @@ module('IndexedDBBucket', function(hooks) {
     assert.ok(bucket instanceof Bucket, 'instanceof Bucket');
   });
 
+  test('is assigned a default `name`, `namespace`, and `version`', function(assert) {
+    assert.equal(bucket.name, 'indexedDB', '`name` is `indexedDB` by default');
+    assert.equal(bucket.namespace, 'orbit-bucket', '`namespace` is `orbit-bucket` by default');
+    assert.equal(bucket.version, 1, '`version` is `1` by default');
+  });
+
   test('is assigned a default `dbName` and `dbStoreName`', function(assert) {
     assert.equal(bucket.dbName, 'orbit-bucket', '`dbName` is `orbit-bucket` by default');
     assert.equal(bucket.dbStoreName, 'data', '`dbStoreName` is `data` by default');
@@ -44,7 +50,7 @@ module('IndexedDBBucket', function(hooks) {
     return bucket.openDB()
       .then(() => {
         assert.equal(bucket.dbVersion, 1, 'version == 1');
-        return bucket.upgrade(2);
+        return bucket.upgrade({ version: 2 });
       })
       .then(() => {
         assert.equal(bucket.dbVersion, 2, 'version == 2');
